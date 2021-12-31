@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import styled from "styled-components";
 import {evaluate, format} from 'mathjs/number';
 import WebFont from 'webfontloader';
@@ -10,147 +10,191 @@ WebFont.load({
 })
 
 const Calculator = () => {
-const [input, changeInput] = useState(0);
-const [result, changeResult] = useState(0);
+const [input, changeInput] = useState("0");
+const [result, changeResult] = useState("0");
 
 const numbers = [7, 8, 9, 4, 5, 6, 1, 2, 3];
-const inputRegex = /(^[1-9]+0*\.?\d*(\+|\-|\*|\/)?$)|^(0\.{1}\d*(?<=\d)(\+|\-|\*|\/)?$)|^0$/gm;
+//const inputRegex = /(^[1-9]+0*\.?\d*(\+|\-|\*|\/)?$)|^(0\.{1}\d*(?<=\d)(\+|\-|\*|\/)?$)|^0$/gm;
 const expressionRegex = /[\+\-\*\/]$/gm;
 
+useEffect(()=>{
+  if (result.toString().length > 25 || input.toString().length > 15) {    
+    changeInput("Exceeds maxlength");
+    changeResult("0");
+  }
+}, [result, input]);
+
 const resetAll = () => {
-  changeResult(0);
-  changeInput(0);
+  changeResult("0");
+  changeInput("0");
 }
 
-const numberInput = (e) => {  
-  //Pressing a number right after evaluating, it clears existing result
-  if (result.toString().indexOf("=") !== -1) {    
-    changeResult(0);
+const numberInput = (e) => {    
+  //Pressing a number after last input is evaluate or last input exceeds length limit, it clears existing result and starts fresh
+  if (result.includes("=") || input === "Exceeds maxlength") {    
+    changeResult("0");
     //Automatically makes it a decimal if first input is a decimal.
-    if (e.target.value == "."){
+    if (e.target.value === "."){
       changeInput("0.");
     }
     else {
       changeInput(e.target.value);
     }  
+  }
+  //Input on screen is an operator, replace the operator with input
+  else if (expressionRegex.test(input)){
+    if (e.target.value === ".") {
+      changeInput("0.");
+    }
+    else {
+      changeInput(e.target.value);
+    }
+  }
+  //Starting an input
+  else if (input === "0") {    
+    if (e.target.value === "."){
+      changeInput("0.");
+    }
+    else if (e.target.value !== "0"){
+      changeInput(e.target.value);
+    }
+  }  
+  //Allows 1 decimal input per input
+  else if (input.includes(".")) {
+    if (e.target.value !== "."){
+      changeInput(prev => prev+e.target.value);
+    } 
   }  
   else {
-    //Initial user input
-    if (input===0 && e.target.value!==0){
-      if (e.target.value==="."){
-        changeInput(prev=>prev+".");
-      }
-      else {
-        changeInput(e.target.value);
-      }    
-    }
-    //Last input is an operator, replace it with current input
-    else if (expressionRegex.test(input)) {
-      //Automatically makes it a decimal if first input is a decimal.
-      if (e.target.value == "."){
-        changeInput("0.");
-      }
-      else {
-        changeInput(e.target.value);
-      }      
-    }
-    //Add to number
-    else if (inputRegex.test(input+e.target.value)){
-      //Will reset if input exceeds maximum length
-      if ((input+e.target.value).length > 10) {
-        changeInput("Exceeds maximum length"); 
-        changeResult(0);
-      }
-      else {
-        changeInput(prev=>prev+e.target.value);
-      }      
-    }
+    changeInput(prev => prev+e.target.value);
   }
 }
 
-const operationInput = (e) => {  
-  //If result is already evaluated, then continue operation using the last resulted number
-  if (result.toString().indexOf("=") !== -1) {
-    changeResult(prev => prev.substring(prev.indexOf("=")+1)+e.target.value);
-    changeInput(e.target.value);
-  } 
-  //Continue chaining operations
-  else if (input !== "Error"){
-    if (result == 0 || result == input){    
+
+const operationInput = (e) => {
+  //Do nothing if input is unnatural 
+  if (input === "NaN" || input === "Infinity" || input === "Exceeds maxlength") {    
+  }
+  else {
+    //If result is already evaluated, then continue operation using the last resulted number
+    if (result.toString().includes("=")) {
+      console.log(`cc`);
       changeResult(input+e.target.value);
       changeInput(e.target.value);
     }
-    //If input is already an operator, replace it with new operator
-    else if (expressionRegex.test(input)) {    
-      changeResult(result.substring(0,result.length-1)+e.target.value);
-      changeInput(e.target.value);
-    }
-    //Add the existing input (a number) and current operator to result  
-    else {    
-      changeResult(prev => prev+input+e.target.value);
-      changeInput(e.target.value);
-    }
-  }       
+    //Continue chaining operations if input is natural
+    else {               
+      //Last input is a number, put that number to result display
+      if ((/[0-9]$/gm).test(input)) {
+        changeInput(e.target.value);
+        if (result === "0") {
+          changeResult(input+e.target.value);
+        }
+        else {
+          changeResult(prev => prev+input+e.target.value);
+        } 
+      }
+      //Last input is an operator
+      else if (expressionRegex.test(input)){
+        //Last operator is the same as new operator
+        if (input === e.target.value){
+          //Do nothing;
+        }
+        //For following 2 else ifs..
+        //If (+) is followed by (-) and vice versa, allow it. If (* or /) following, replace (+ or -)
+        else if (result[result.length-1] === ("+")){
+          if (e.target.value === "-"){            
+            changeInput(e.target.value);
+            changeResult(prev => prev+"-");
+          }
+          else {
+            changeInput(e.target.value);
+            changeResult(prev => prev.substring(0,result.length-1)+e.target.value);
+          }
+        }        
+        else if (result[result.length-1] === ("-")){
+          if (e.target.value === "+"){            
+            changeInput(e.target.value);
+            changeResult(prev => prev+"+");
+          }
+          else {
+            changeInput(e.target.value);
+            changeResult(prev => prev.substring(0,result.length-1)+e.target.value);
+          }
+        }
+        //If (* or /) is followed by (+ or -), allow it. Otherwise allow signs to flip between * and /
+        else if (result[result.length-1] === "*" || result[result.length-1] === "/"){
+          if (e.target.value === "+" || e.target.value === "-") {
+            changeInput(e.target.value);
+            changeResult(prev => prev+e.target.value);
+          }
+          else {
+            changeInput(e.target.value);
+            changeResult(prev => prev.substring(0,result.length-1)+e.target.value);
+          }
+        }
+      }      
+    }       
+  }    
 }
 
-const calculateResult = (e) => {  
-  let final = format(evaluate(result.toString()+input.toString()),{precision:14});
-  //User hits equal when equal operator exists, or result is input  
-  if (result.toString().indexOf("=") !== -1){
-    changeResult(prev => prev.substring(prev.indexOf("=")+1)+"="+prev.substring(prev.indexOf("=")+1));
-    changeInput(result.substring(result.indexOf("=")+1));
-  }
-  //Change result to current input if result is 0
-  else if (result == 0) {
-    changeResult(`${result}+${input}=${final}`);
+const calculateResult = (e) => {      
+  if (result == 0) {
+    changeInput(input);
+    changeResult(input+"="+input);
   }
   else {
-    //User hits equal when last input is a number          
-    //Resulting number is divided by 0, or resulting length is too long
-      if (final == "Infinity" || final.toString() === "NaN" || final.toString().length > 15){
-        changeInput("Error");
-        changeResult(0);
-      }
-      else {        
-        changeResult(prev => prev+input+"="+final);
+    if (!result.toString().includes("=")) {
+      //Remove last input if it's an operator, then evaluate
+      if (expressionRegex.test(result+input)){   
+        console.log(`Evaluating.. last input operatr`)   ;
+        let final = format(evaluate(result.slice(0, result.length-1)), {notation: "fixed"});
         changeInput(final);
-      }      
+        changeResult(prev => prev.slice(0, prev.length-1)+"="+final);         
+      }
+      //Last input is not an operator, evaluate on screen numbers
+      else {
+        let final = format(evaluate(result+input), {notation: "fixed"});
+        console.log(final);
+        changeInput(final);
+        changeResult("="+final);        
+      }
+    }
   }  
 }
 
 const numberButton = numbers.map((value)=>{
-    return (        
-            <NumberButton key={value} value={value} onClick={numberInput} >
-              {value}
-            </NumberButton>        
-    )
+  return (        
+    <NumberButton key={value} value={value} onClick={numberInput}>
+      {value}
+    </NumberButton>        
+  )
 });
-
-    return (
-        <CalculatorWrapper>
-          <Display>
-            <div style={{color: "orange"}}>{result}</div>
-            <div>{input}</div>            
-          </Display>
-          <AllInput>
-            <TopRow>
-              <ResetButton onClick={resetAll}>AC</ResetButton>
-              <OperationButton key={"/"} value={"/"} onClick={operationInput}>/</OperationButton>
-              <OperationButton key={"*"} value={"*"} onClick={operationInput}>X</OperationButton>
-              <OperationButton key={"-"} value={"-"} onClick={operationInput}>-</OperationButton>
-            </TopRow>
-            <OneToNineWrapper>
-              {numberButton}
-            </OneToNineWrapper>
-            <BottomRow>
-              <NumberButton key={"0"} value={0} onClick={numberInput}>0</NumberButton>
-              <NumberButton key={"."} value={"."} onClick={numberInput}>.</NumberButton>
-            </BottomRow>
-            <PlusSign key={"+"} value={"+"} onClick={operationInput}>+</PlusSign>                        
-            <EqualSign key={"equal"} value={"="} onClick={calculateResult}>=</EqualSign>
-          </AllInput>
-        </CalculatorWrapper>
-    )
+  return (
+    <CalculatorWrapper>
+      <Display>
+        <div style={{color: "orange"}}>{result}</div>
+        <div>{input}</div>            
+      </Display>
+      <AllInput>
+        <TopRow>
+          <ResetButton onClick={resetAll}>AC</ResetButton>
+          <OperationButton key={"/"} value={"/"} onClick={operationInput}>/</OperationButton>
+          <OperationButton key={"*"} value={"*"} onClick={operationInput}>X</OperationButton>
+          <OperationButton key={"-"} value={"-"} onClick={operationInput}>-</OperationButton>
+        </TopRow>
+        <OneToNineWrapper>
+          {numberButton}
+        </OneToNineWrapper>
+        <BottomRow>
+          <NumberButton key={"0"} value={0} onClick={numberInput}>0</NumberButton>
+          <NumberButton key={"."} value={"."} onClick={numberInput}>.</NumberButton>
+        </BottomRow>
+        <PlusSign key={"+"} value={"+"} onClick={operationInput}>+</PlusSign>                        
+        <EqualSign key={"equal"} value={"="} onClick={calculateResult}>=</EqualSign>
+      </AllInput>
+    </CalculatorWrapper>
+  )
 }
 
 export default Calculator
@@ -175,8 +219,8 @@ const Display = styled.div`
   margin-top: 20px;   
   text-align: right;
   color: white;
-  font-size: 1.5em;
-  
+  font-size: 1.35em;
+  overflow-wrap: break-word;
 `
 
 const AllInput = styled.div`
