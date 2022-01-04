@@ -70,15 +70,11 @@ const numberInput = (e) => {
   }
 }
 
-
 const operationInput = (e) => {
   //Do nothing if input is unnatural 
-  if (input === "NaN" || input === "Infinity" || input === "Exceeds maxlength") {    
-  }
-  else {
+  if (input !== "NaN" || input !== "Infinity" || input !== "Exceeds maxlength") {
     //If result is already evaluated, then continue operation using the last resulted number
     if (result.toString().includes("=")) {
-      console.log(`cc`);
       changeResult(input+e.target.value);
       changeInput(e.target.value);
     }
@@ -98,7 +94,7 @@ const operationInput = (e) => {
       else if (expressionRegex.test(input)){
         //Last operator is the same as new operator
         if (input === e.target.value){
-          //Do nothing;
+          return
         }
         //For following 2 else ifs..
         //If (+) is followed by (-) and vice versa, allow it. If (* or /) following, replace (+ or -)
@@ -134,7 +130,9 @@ const operationInput = (e) => {
           }
         }
       }      
-    }       
+    }
+  }
+  else {           
   }    
 }
 
@@ -147,7 +145,6 @@ const calculateResult = (e) => {
     if (!result.toString().includes("=")) {
       //Remove last input if it's an operator, then evaluate
       if (expressionRegex.test(result+input)){   
-        console.log(`Evaluating.. last input operatr`)   ;
         let final = format(evaluate(result.slice(0, result.length-1)), {notation: "fixed"});
         changeInput(final);
         changeResult(prev => prev.slice(0, prev.length-1)+"="+final);         
@@ -170,6 +167,7 @@ const numberButton = numbers.map((value)=>{
     </NumberButton>        
   )
 });
+
   return (
     <CalculatorWrapper>
       <Display>
@@ -179,19 +177,19 @@ const numberButton = numbers.map((value)=>{
       <AllInput>
         <TopRow>
           <ResetButton onClick={resetAll}>AC</ResetButton>
-          <OperationButton key={"/"} value={"/"} onClick={operationInput}>/</OperationButton>
-          <OperationButton key={"*"} value={"*"} onClick={operationInput}>X</OperationButton>
-          <OperationButton key={"-"} value={"-"} onClick={operationInput}>-</OperationButton>
+          <OperationButton value={"/"} onClick={operationInput}>/</OperationButton>
+          <OperationButton value={"*"} onClick={operationInput}>X</OperationButton>
+          <OperationButton value={"-"} onClick={operationInput}>-</OperationButton>
         </TopRow>
         <OneToNineWrapper>
           {numberButton}
         </OneToNineWrapper>
         <BottomRow>
-          <NumberButton key={"0"} value={0} onClick={numberInput}>0</NumberButton>
-          <NumberButton key={"."} value={"."} onClick={numberInput}>.</NumberButton>
+          <NumberButton value={0} onClick={numberInput}>0</NumberButton>
+          <NumberButton value={"."} onClick={numberInput}>.</NumberButton>
         </BottomRow>
-        <PlusSign key={"+"} value={"+"} onClick={operationInput}>+</PlusSign>                        
-        <EqualSign key={"equal"} value={"="} onClick={calculateResult}>=</EqualSign>
+        <PlusSign value={"+"} onClick={operationInput}>+</PlusSign>                        
+        <EqualSign value={"="} onClick={calculateResult}>=</EqualSign>
       </AllInput>
     </CalculatorWrapper>
   )
